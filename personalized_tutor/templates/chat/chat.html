@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ session.title }} — Tutor</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root {
+    --ink: #1a1814;
+    --paper: #f7f4ee;
+    --muted: #9b9690;
+    --accent: #c85a1e;
+    --surface: #edeae3;
+    --border: #d4cfc8;
+  }
+  body { font-family: 'Fraunces', serif; background: var(--paper); color: var(--ink); }
+  code, pre { font-family: 'IBM Plex Mono', monospace; }
+  #messages { scroll-behavior: smooth; }
+  .msg-user { background: var(--surface); border-radius: 16px 16px 4px 16px; }
+  .msg-assistant { background: white; border: 1px solid var(--border); border-radius: 4px 16px 16px 16px; }
+  .msg-content h1, .msg-content h2, .msg-content h3 { font-weight: 600; margin: 0.5em 0; }
+  .msg-content p { margin-bottom: 0.75em; line-height: 1.7; }
+  .msg-content code { background: var(--surface); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.88em; }
+  .msg-content pre { border-radius: 8px; overflow-x: auto; margin: 0.75em 0; }
+  .msg-content pre code { background: none; padding: 0; }
+  .msg-content ul, .msg-content ol { padding-left: 1.5em; margin-bottom: 0.75em; }
+  .typing-dot { animation: bounce 1.2s infinite; }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+  .cursor::after { content: '▋'; animation: blink 0.8s step-end infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  #input { font-family: 'Fraunces', serif; resize: none; }
+</style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+<!-- Header -->
+<header class="border-b flex items-center justify-between px-6 py-3" style="border-color:var(--border); background:var(--paper);">
+  <div class="flex items-center gap-3">
+    <a href="/dashboard/" class="text-sm" style="color:var(--muted);">← Dashboard</a>
+    <span style="color:var(--border);">|</span>
+    <h1 class="text-base font-semibold" style="font-weight:600;">{{ session.topic.name|default:"Open Session" }}</h1>
+  </div>
+  <div class="flex items-center gap-4 text-sm" style="color:var(--muted);">
+    <span id="mastery-badge">Mastery: —</span>
+    <button onclick="endSession()" class="px-3 py-1 rounded-lg text-xs transition" style="background:var(--surface); border:1px solid var(--border);">End session</button>
+  </div>
+</header>
+
+<!-- Messages -->
+<main id="messages" class="flex-1 overflow-y-auto px-4 py-6 space-y-4 max-w-3xl mx-auto w-full">
+  {% for msg in messages %}
+  <div class="flex {% if msg.role == 'user' %}justify-end{% else %}justify-start{% endif %} px-2">
+    <div class="max-w-xl px-4 py-3 {% if msg.role == 'user' %}msg-user{% else %}msg-assistant{% endif %}">
+      <div class="msg-content text-sm leading-relaxed">{{ msg.content }}</div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="text-center mt-16" style="color:var(--muted);">
+    <p class="text-lg mb-2">Ready when you are.</p>
+    <p class="text-sm">Start with a question, a topic, or just say hello.</p>
+  </div>
+  {% endfor %}
+</main>
+
+<!-- Typing indicator (hidden by default) -->
+<div id="typing" class="hidden px-8 py-2 max-w-3xl mx-auto w-full">
+  <div class="inline-flex items-center gap-1 px-4 py-3 msg-assistant rounded-xl">
+    <span class="typing-dot w-2 h-2 rounded-full inline-block" style="background:var(--muted);"></span>
+    <span class="typing-dot w-2 h-2 rounded-full inline-block" style="background:var(--muted);"></span>
+    <span class="typing-dot w-2 h-2 rounded-full inline-block" style="background:var(--muted);"></span>
+  </div>
+</div>
+
+<!-- Active streaming message (appended here) -->
+<div id="stream-container" class="hidden px-4 max-w-3xl mx-auto w-full">
+  <div class="flex justify-start px-2">
+    <div class="max-w-xl px-4 py-3 msg-assistant">
+      <div id="stream-content" class="msg-content text-sm leading-relaxed cursor"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Input area -->
+<footer class="border-t px-4 py-4" style="border-color:var(--border); background:var(--paper);">
+  <div class="max-w-3xl mx-auto flex gap-3 items-end">
+    <textarea
+      id="input"
+      rows="1"
+      placeholder="Ask something, answer a question, or say 'quiz me'…"
+      class="flex-1 rounded-xl px-4 py-3 text-sm outline-none border transition focus:border-current"
+      style="border-color:var(--border); background:white; min-height:48px; max-height:160px;"
+      oninput="autoResize(this)"
+      onkeydown="handleKey(event)"
+    ></textarea>
+    <button
+      id="send-btn"
+      onclick="sendMessage()"
+      class="px-5 py-3 rounded-xl text-sm font-medium text-white transition"
+      style="background:var(--accent);"
+    >Send</button>
+  </div>
+  <p class="text-center text-xs mt-2" style="color:var(--muted);">Enter to send · Shift+Enter for newline</p>
+</footer>
+
+<script>
+const SESSION_ID = "{{ session.id }}";
+const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/session/${SESSION_ID}/`;
+let ws, isStreaming = false, streamBuffer = "";
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => console.log("WS connected");
+  ws.onmessage = handleWSMessage;
+  ws.onclose = (e) => {
+    console.log("WS closed:", e.code);
+    if (e.code !== 1000) setTimeout(connect, 3000);
+  };
+  ws.onerror = (e) => console.error("WS error", e);
+}
+
+function handleWSMessage(event) {
+  const data = JSON.parse(event.data);
+  if (data.type === "typing_start") {
+    showTyping();
+  } else if (data.type === "token") {
+    hideTyping();
+    appendToken(data.content);
+  } else if (data.type === "message_complete") {
+    finaliseStream();
+  } else if (data.type === "error") {
+    hideTyping(); finaliseStream();
+    appendSystemMessage("⚠ " + data.content);
+  }
+}
+
+function showTyping() {
+  document.getElementById("typing").classList.remove("hidden");
+  scrollBottom();
+}
+function hideTyping() {
+  document.getElementById("typing").classList.add("hidden");
+  document.getElementById("stream-container").classList.remove("hidden");
+}
+
+function appendToken(token) {
+  streamBuffer += token;
+  document.getElementById("stream-content").textContent = streamBuffer;
+  scrollBottom();
+}
+
+function finaliseStream() {
+  const container = document.getElementById("stream-container");
+  const content = document.getElementById("stream-content");
+  // Render markdown
+  content.innerHTML = marked.parse(streamBuffer);
+  content.classList.remove("cursor");
+  document.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+  // Move rendered message to main thread
+  const messages = document.getElementById("messages");
+  messages.appendChild(container.firstElementChild.cloneNode(true));
+  // Reset stream UI
+  container.classList.add("hidden");
+  content.textContent = "";
+  content.classList.add("cursor");
+  streamBuffer = "";
+  isStreaming = false;
+  document.getElementById("send-btn").disabled = false;
+  scrollBottom();
+}
+
+function appendSystemMessage(text) {
+  const messages = document.getElementById("messages");
+  const div = document.createElement("div");
+  div.className = "flex justify-center";
+  div.innerHTML = `<div class="text-xs px-3 py-1 rounded-full" style="background:var(--surface);color:var(--muted);">${text}</div>`;
+  messages.appendChild(div);
+  scrollBottom();
+}
+
+function sendMessage() {
+  if (isStreaming) return;
+  const input = document.getElementById("input");
+  const text = input.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+  // Append user message optimistically
+  appendUserMessage(text);
+  input.value = "";
+  input.style.height = "48px";
+
+  isStreaming = true;
+  document.getElementById("send-btn").disabled = true;
+  ws.send(JSON.stringify({ type: "message", content: text }));
+}
+
+function appendUserMessage(text) {
+  const messages = document.getElementById("messages");
+  const div = document.createElement("div");
+  div.className = "flex justify-end px-2";
+  div.innerHTML = `<div class="max-w-xl px-4 py-3 msg-user"><div class="msg-content text-sm">${escapeHtml(text)}</div></div>`;
+  messages.appendChild(div);
+  scrollBottom();
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function scrollBottom() {
+  const m = document.getElementById("messages");
+  m.scrollTop = m.scrollHeight;
+}
+
+function autoResize(el) {
+  el.style.height = "48px";
+  el.style.height = Math.min(el.scrollHeight, 160) + "px";
+}
+
+function handleKey(e) {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function endSession() {
+  if (ws) ws.close(1000, "user_ended");
+  window.location.href = "/dashboard/";
+}
+
+connect();
+scrollBottom();
+</script>
+</body>
+</html>
