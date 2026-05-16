@@ -1,2 +1,5 @@
 .venv/
 personalized_tutor/.venv/
+.env
+*.pyc
+__pycache__/
