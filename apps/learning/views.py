@@ -15,17 +15,38 @@ from apps.accounts.utils import get_agent_user, ensure_learner_profile
 def dashboard(request):
     user = get_agent_user(request)
     profile = ensure_learner_profile(user)
+    if request.method == "POST":
+        topic_slug = request.POST.get("topic_slug")
+        custom_topic = request.POST.get("custom_topic", "").strip()
+        title = request.POST.get("title") or custom_topic or f"Session {timezone.now():%b %d}"
+
+        topic = None
+        if topic_slug:
+            topic = get_object_or_404(Topic, slug=topic_slug)
+            title = topic.name
+
+        session = LearningSession.objects.create(
+            user=user,
+            topic=topic,
+            title=title,
+        )
+        return redirect("chat_view", session_id=str(session.id))
+
     recent_sessions = user.sessions.order_by("-started_at")[:5]
+    due_cards = get_due_cards(user).select_related("topic")[:4]
     due_cards_count = get_due_cards(user).count()
     snapshots = ProgressSnapshot.objects.filter(user=user).order_by("-date")[:30]
     active_goals = profile.goals.filter(status="active")
+    topics = Topic.objects.all().order_by("subject", "difficulty_level")[:8]
 
     return render(request, "dashboard/home.html", {
         "profile": profile,
         "recent_sessions": recent_sessions,
+        "due_cards": due_cards,
         "due_cards_count": due_cards_count,
         "snapshots": list(snapshots.values("date", "subject", "mastery_score")),
         "active_goals": active_goals,
+        "topics": topics,
     })
 
 
@@ -34,9 +55,11 @@ def chat_view(request, session_id):
     user = get_agent_user(request)
     session = get_object_or_404(LearningSession, pk=session_id, user=user)
     messages = session.messages.filter(role__in=["user", "assistant"])
+    display_title = session.topic.name if session.topic else session.title or "Open session"
     return render(request, "chat/chat.html", {
         "session": session,
         "messages": messages,
+        "display_title": display_title,
     })
 
 

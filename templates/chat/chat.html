@@ -3,127 +3,209 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ session.title }} — Tutor</title>
+<title>{{ display_title }} - Tutor</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <style>
   :root {
-    --ink: #1a1814;
-    --paper: #f7f4ee;
-    --muted: #9b9690;
-    --accent: #c85a1e;
-    --surface: #edeae3;
-    --border: #d4cfc8;
+    --ink: #17201b;
+    --muted: #66736b;
+    --paper: #f6f7f2;
+    --surface: #ffffff;
+    --line: #d9dfd6;
+    --accent: #226f54;
+    --accent-2: #c65d2e;
+    --focus: #f0c95a;
+    --board: #fbfcf7;
   }
-  body { font-family: 'Fraunces', serif; background: var(--paper); color: var(--ink); }
-  code, pre { font-family: 'IBM Plex Mono', monospace; }
-  #messages { scroll-behavior: smooth; }
-  .msg-user { background: var(--surface); border-radius: 16px 16px 4px 16px; }
-  .msg-assistant { background: white; border: 1px solid var(--border); border-radius: 4px 16px 16px 16px; }
-  .msg-content h1, .msg-content h2, .msg-content h3 { font-weight: 600; margin: 0.5em 0; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, system-ui, sans-serif; background: var(--paper); color: var(--ink); }
+  code, pre, .mono { font-family: "IBM Plex Mono", monospace; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+  .tool-btn { min-width: 42px; min-height: 42px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); display: inline-flex; align-items: center; justify-content: center; }
+  .tool-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .msg-user { background: #edf3ea; border-radius: 8px; }
+  .msg-assistant { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+  .msg-content h1, .msg-content h2, .msg-content h3 { font-weight: 700; margin: 0.6em 0 0.35em; }
   .msg-content p { margin-bottom: 0.75em; line-height: 1.7; }
-  .msg-content code { background: var(--surface); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.88em; }
+  .msg-content code { background: #edf3ea; padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.88em; }
   .msg-content pre { border-radius: 8px; overflow-x: auto; margin: 0.75em 0; }
   .msg-content pre code { background: none; padding: 0; }
-  .msg-content ul, .msg-content ol { padding-left: 1.5em; margin-bottom: 0.75em; }
+  .msg-content ul, .msg-content ol { padding-left: 1.35em; margin-bottom: 0.75em; }
   .typing-dot { animation: bounce 1.2s infinite; }
   .typing-dot:nth-child(2) { animation-delay: 0.2s; }
   .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
-  .cursor::after { content: '▋'; animation: blink 0.8s step-end infinite; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
+  .cursor::after { content: "|"; animation: blink 0.8s step-end infinite; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-  #input { font-family: 'Fraunces', serif; resize: none; }
+  #input { resize: none; }
+  #sketch-canvas { width: 100%; height: 100%; display: block; background: var(--board); border-radius: 8px; }
+  @media (max-width: 1023px) {
+    #workspace { grid-template-columns: 1fr; }
+    #sketch-panel { min-height: 320px; }
+  }
 </style>
 </head>
-<body class="flex flex-col h-screen overflow-hidden">
-
-<!-- Header -->
-<header class="border-b flex items-center justify-between px-6 py-3" style="border-color:var(--border); background:var(--paper);">
-  <div class="flex items-center gap-3">
-    <a href="/dashboard/" class="text-sm" style="color:var(--muted);">← Dashboard</a>
-    <span style="color:var(--border);">|</span>
-    <h1 class="text-base font-semibold" style="font-weight:600;">{{ session.topic.name|default:"Open Session" }}</h1>
-  </div>
-  <div class="flex items-center gap-4 text-sm" style="color:var(--muted);">
-    <span id="mastery-badge">Mastery: —</span>
-    <button onclick="endSession()" class="px-3 py-1 rounded-lg text-xs transition" style="background:var(--surface); border:1px solid var(--border);">End session</button>
+<body class="h-screen overflow-hidden flex flex-col">
+<header class="border-b px-4 py-3" style="border-color:var(--line); background:var(--surface);">
+  <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3 min-w-0">
+      <a href="/dashboard/" class="tool-btn" title="Back to workspace" aria-label="Back to workspace">
+        <span aria-hidden="true">&larr;</span>
+      </a>
+      <div class="min-w-0">
+        <p class="text-xs mono uppercase" style="color:var(--muted);">Tutor room</p>
+        <h1 class="font-semibold truncate">{{ display_title }}</h1>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="mode-status" class="text-xs mono px-2 py-1 rounded-md" style="background:#edf3ea; color:var(--accent);">Voice ready</span>
+      <button onclick="endSession()" class="px-3 py-2 rounded-md text-xs font-medium" style="background:#edf3ea; border:1px solid var(--line);">End</button>
+    </div>
   </div>
 </header>
 
-<!-- Messages -->
-<main id="messages" class="flex-1 overflow-y-auto px-4 py-6 space-y-4 max-w-3xl mx-auto w-full">
-  {% for msg in messages %}
-  <div class="flex {% if msg.role == 'user' %}justify-end{% else %}justify-start{% endif %} px-2">
-    <div class="max-w-xl px-4 py-3 {% if msg.role == 'user' %}msg-user{% else %}msg-assistant{% endif %}">
-      <div class="msg-content text-sm leading-relaxed">{{ msg.content }}</div>
+<main id="workspace" class="flex-1 min-h-0 max-w-7xl w-full mx-auto p-4 grid grid-cols-[minmax(360px,0.92fr)_minmax(420px,1.08fr)] gap-4">
+  <section id="sketch-panel" class="panel min-h-0 flex flex-col overflow-hidden">
+    <div class="px-4 py-3 border-b flex items-center justify-between" style="border-color:var(--line);">
+      <div>
+        <h2 class="font-semibold text-sm">Sketch board</h2>
+        <p id="sketch-caption" class="text-xs mt-1" style="color:var(--muted);">Illustrations update as the tutor explains.</p>
+      </div>
+      <button class="tool-btn" onclick="clearSketch()" title="Clear sketch" aria-label="Clear sketch">X</button>
     </div>
-  </div>
-  {% empty %}
-  <div class="text-center mt-16" style="color:var(--muted);">
-    <p class="text-lg mb-2">Ready when you are.</p>
-    <p class="text-sm">Start with a question, a topic, or just say hello.</p>
-  </div>
-  {% endfor %}
+    <div class="flex-1 min-h-0 p-3">
+      <canvas id="sketch-canvas"></canvas>
+    </div>
+  </section>
+
+  <section class="panel min-h-0 flex flex-col overflow-hidden">
+    <div class="px-4 py-3 border-b flex items-center justify-between gap-3" style="border-color:var(--line);">
+      <div>
+        <h2 class="font-semibold text-sm">Lesson and conversation</h2>
+        <p id="listening-copy" class="text-xs mt-1" style="color:var(--muted);">Speak naturally, or switch to text when you want to type.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="voice-toggle" class="tool-btn active" onclick="setInputMode('voice')" title="Use voice" aria-label="Use voice">
+          <span aria-hidden="true">Mic</span>
+        </button>
+        <button id="text-toggle" class="tool-btn" onclick="setInputMode('text')" title="Use text" aria-label="Use text">
+          <span aria-hidden="true">Text</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="messages" class="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
+      {% for msg in messages %}
+      <div class="flex {% if msg.role == 'user' %}justify-end{% else %}justify-start{% endif %}">
+        <div class="max-w-[92%] px-4 py-3 {% if msg.role == 'user' %}msg-user{% else %}msg-assistant{% endif %}">
+          <div class="msg-content text-sm leading-relaxed">{{ msg.content }}</div>
+        </div>
+      </div>
+      {% empty %}
+      <div id="empty-state" class="h-full min-h-[280px] flex items-center justify-center text-center">
+        <div>
+          <p class="text-lg font-semibold mb-2">Ready when you are.</p>
+          <p class="text-sm max-w-sm" style="color:var(--muted);">Press the mic and ask for a lesson, an example, a quiz, or a slower explanation.</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div id="typing" class="hidden px-4 pb-2">
+      <div class="inline-flex items-center gap-1 px-4 py-3 msg-assistant">
+        <span class="typing-dot w-2 h-2 rounded-full inline-block" style="background:var(--muted);"></span>
+        <span class="typing-dot w-2 h-2 rounded-full inline-block" style="background:var(--muted);"></span>
+        <span class="typing-dot w-2 h-2 rounded-full inline-block" style="background:var(--muted);"></span>
+      </div>
+    </div>
+
+    <div id="stream-container" class="hidden px-4 pb-2">
+      <div class="flex justify-start">
+        <div class="max-w-[92%] px-4 py-3 msg-assistant">
+          <div id="stream-content" class="msg-content text-sm leading-relaxed cursor"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="border-t p-3" style="border-color:var(--line); background:#fbfcf7;">
+      <div id="voice-controls" class="flex items-center gap-3">
+        <button id="listen-btn" onclick="toggleListening()" class="px-4 py-3 rounded-md text-white font-semibold" style="background:var(--accent);">Start listening</button>
+        <p id="voice-transcript" class="flex-1 text-sm px-3 py-3 rounded-md border min-h-[46px]" style="border-color:var(--line); background:white; color:var(--muted);">Voice input is selected.</p>
+      </div>
+      <div id="text-controls" class="hidden flex gap-3 items-end">
+        <textarea
+          id="input"
+          rows="1"
+          placeholder="Ask something, answer a question, or say 'quiz me'..."
+          class="flex-1 rounded-md px-4 py-3 text-sm outline-none border focus:ring-2"
+          style="border-color:var(--line); --tw-ring-color:var(--focus); min-height:48px; max-height:150px;"
+          oninput="autoResize(this)"
+          onkeydown="handleKey(event)"
+        ></textarea>
+        <button id="send-btn" onclick="sendMessage()" class="px-5 py-3 rounded-md text-sm font-semibold text-white" style="background:var(--accent);">Send</button>
+      </div>
+    </footer>
+  </section>
 </main>
-
-<!-- Typing indicator (hidden by default) -->
-<div id="typing" class="hidden px-8 py-2 max-w-3xl mx-auto w-full">
-  <div class="inline-flex items-center gap-1 px-4 py-3 msg-assistant rounded-xl">
-    <span class="typing-dot w-2 h-2 rounded-full inline-block" style="background:var(--muted);"></span>
-    <span class="typing-dot w-2 h-2 rounded-full inline-block" style="background:var(--muted);"></span>
-    <span class="typing-dot w-2 h-2 rounded-full inline-block" style="background:var(--muted);"></span>
-  </div>
-</div>
-
-<!-- Active streaming message (appended here) -->
-<div id="stream-container" class="hidden px-4 max-w-3xl mx-auto w-full">
-  <div class="flex justify-start px-2">
-    <div class="max-w-xl px-4 py-3 msg-assistant">
-      <div id="stream-content" class="msg-content text-sm leading-relaxed cursor"></div>
-    </div>
-  </div>
-</div>
-
-<!-- Input area -->
-<footer class="border-t px-4 py-4" style="border-color:var(--border); background:var(--paper);">
-  <div class="max-w-3xl mx-auto flex gap-3 items-end">
-    <textarea
-      id="input"
-      rows="1"
-      placeholder="Ask something, answer a question, or say 'quiz me'…"
-      class="flex-1 rounded-xl px-4 py-3 text-sm outline-none border transition focus:border-current"
-      style="border-color:var(--border); background:white; min-height:48px; max-height:160px;"
-      oninput="autoResize(this)"
-      onkeydown="handleKey(event)"
-    ></textarea>
-    <button
-      id="send-btn"
-      onclick="sendMessage()"
-      class="px-5 py-3 rounded-xl text-sm font-medium text-white transition"
-      style="background:var(--accent);"
-    >Send</button>
-  </div>
-  <p class="text-center text-xs mt-2" style="color:var(--muted);">Enter to send · Shift+Enter for newline</p>
-</footer>
 
 <script>
 const SESSION_ID = "{{ session.id }}";
-const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/session/${SESSION_ID}/`;
-let ws, isStreaming = false, streamBuffer = "";
+const WS_URL = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/session/${SESSION_ID}/`;
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let ws, isStreaming = false, streamBuffer = "", inputMode = "voice";
+let recognition = null, listening = false, speakingEnabled = true;
 
 function connect() {
   ws = new WebSocket(WS_URL);
-  ws.onopen = () => console.log("WS connected");
+  ws.onopen = () => setStatus("Voice ready");
   ws.onmessage = handleWSMessage;
   ws.onclose = (e) => {
-    console.log("WS closed:", e.code);
+    setStatus("Reconnecting");
     if (e.code !== 1000) setTimeout(connect, 3000);
   };
-  ws.onerror = (e) => console.error("WS error", e);
+  ws.onerror = () => setStatus("Connection issue");
+}
+
+function setupSpeech() {
+  if (!SpeechRecognition) {
+    document.getElementById("listening-copy").textContent = "Voice input is not supported in this browser. Text mode is available.";
+    setInputMode("text");
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = "en-US";
+  recognition.onstart = () => {
+    listening = true;
+    document.getElementById("listen-btn").textContent = "Listening...";
+    setStatus("Listening");
+  };
+  recognition.onresult = (event) => {
+    let interim = "", finalText = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) finalText += transcript;
+      else interim += transcript;
+    }
+    document.getElementById("voice-transcript").textContent = finalText || interim || "Listening...";
+    if (finalText.trim()) sendVoiceMessage(finalText.trim());
+  };
+  recognition.onerror = () => {
+    listening = false;
+    document.getElementById("listen-btn").textContent = "Start listening";
+    setStatus("Voice paused");
+  };
+  recognition.onend = () => {
+    listening = false;
+    document.getElementById("listen-btn").textContent = "Start listening";
+    if (!isStreaming && inputMode === "voice") setStatus("Voice ready");
+  };
 }
 
 function handleWSMessage(event) {
@@ -137,14 +219,66 @@ function handleWSMessage(event) {
     finaliseStream();
   } else if (data.type === "error") {
     hideTyping(); finaliseStream();
-    appendSystemMessage("⚠ " + data.content);
+    appendSystemMessage("Warning: " + data.content);
   }
+}
+
+function setInputMode(mode) {
+  inputMode = mode;
+  speakingEnabled = mode === "voice";
+  document.getElementById("voice-controls").classList.toggle("hidden", mode !== "voice");
+  document.getElementById("text-controls").classList.toggle("hidden", mode !== "text");
+  document.getElementById("voice-toggle").classList.toggle("active", mode === "voice");
+  document.getElementById("text-toggle").classList.toggle("active", mode === "text");
+  if (mode === "text" && recognition && listening) recognition.stop();
+  setStatus(mode === "voice" ? "Voice ready" : "Text mode");
+}
+
+function toggleListening() {
+  if (!recognition || isStreaming) return;
+  if (listening) recognition.stop();
+  else {
+    window.speechSynthesis && window.speechSynthesis.cancel();
+    document.getElementById("voice-transcript").textContent = "Listening...";
+    recognition.start();
+  }
+}
+
+function sendVoiceMessage(text) {
+  if (!text || isStreaming) return;
+  appendUserMessage(text);
+  document.getElementById("voice-transcript").textContent = text;
+  sendToTutor(text);
+}
+
+function sendMessage() {
+  if (isStreaming) return;
+  const input = document.getElementById("input");
+  const text = input.value.trim();
+  if (!text) return;
+  appendUserMessage(text);
+  input.value = "";
+  input.style.height = "48px";
+  sendToTutor(text);
+}
+
+function sendToTutor(text) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    appendSystemMessage("The tutor is reconnecting. Try again in a moment.");
+    return;
+  }
+  isStreaming = true;
+  setStatus("Tutor thinking");
+  const sendBtn = document.getElementById("send-btn");
+  if (sendBtn) sendBtn.disabled = true;
+  ws.send(JSON.stringify({ type: "message", content: text }));
 }
 
 function showTyping() {
   document.getElementById("typing").classList.remove("hidden");
   scrollBottom();
 }
+
 function hideTyping() {
   document.getElementById("typing").classList.add("hidden");
   document.getElementById("stream-container").classList.remove("hidden");
@@ -153,65 +287,208 @@ function hideTyping() {
 function appendToken(token) {
   streamBuffer += token;
   document.getElementById("stream-content").textContent = streamBuffer;
+  drawSketch(streamBuffer);
   scrollBottom();
 }
 
 function finaliseStream() {
+  if (!streamBuffer) return;
   const container = document.getElementById("stream-container");
   const content = document.getElementById("stream-content");
-  // Render markdown
   content.innerHTML = marked.parse(streamBuffer);
   content.classList.remove("cursor");
-  document.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
-  // Move rendered message to main thread
-  const messages = document.getElementById("messages");
-  messages.appendChild(container.firstElementChild.cloneNode(true));
-  // Reset stream UI
+  document.querySelectorAll("pre code").forEach(b => hljs.highlightElement(b));
+  document.getElementById("messages").appendChild(container.firstElementChild.cloneNode(true));
+  speak(streamBuffer);
+  drawSketch(streamBuffer, true);
   container.classList.add("hidden");
   content.textContent = "";
   content.classList.add("cursor");
   streamBuffer = "";
   isStreaming = false;
-  document.getElementById("send-btn").disabled = false;
+  const sendBtn = document.getElementById("send-btn");
+  if (sendBtn) sendBtn.disabled = false;
+  setStatus(inputMode === "voice" ? "Voice ready" : "Text mode");
+  scrollBottom();
+}
+
+function appendUserMessage(text) {
+  const empty = document.getElementById("empty-state");
+  if (empty) empty.remove();
+  const div = document.createElement("div");
+  div.className = "flex justify-end";
+  div.innerHTML = `<div class="max-w-[92%] px-4 py-3 msg-user"><div class="msg-content text-sm">${escapeHtml(text)}</div></div>`;
+  document.getElementById("messages").appendChild(div);
   scrollBottom();
 }
 
 function appendSystemMessage(text) {
-  const messages = document.getElementById("messages");
   const div = document.createElement("div");
   div.className = "flex justify-center";
-  div.innerHTML = `<div class="text-xs px-3 py-1 rounded-full" style="background:var(--surface);color:var(--muted);">${text}</div>`;
-  messages.appendChild(div);
+  div.innerHTML = `<div class="text-xs px-3 py-1 rounded-md" style="background:#edf3ea;color:var(--muted);">${escapeHtml(text)}</div>`;
+  document.getElementById("messages").appendChild(div);
   scrollBottom();
 }
 
-function sendMessage() {
-  if (isStreaming) return;
-  const input = document.getElementById("input");
-  const text = input.value.trim();
-  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-
-  // Append user message optimistically
-  appendUserMessage(text);
-  input.value = "";
-  input.style.height = "48px";
-
-  isStreaming = true;
-  document.getElementById("send-btn").disabled = true;
-  ws.send(JSON.stringify({ type: "message", content: text }));
+function speak(markdown) {
+  if (!speakingEnabled || !("speechSynthesis" in window)) return;
+  const text = markdown.replace(/```[\s\S]*?```/g, "code example omitted")
+    .replace(/[#*_`>\-\[\]\(\)]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 900);
+  if (!text) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.96;
+  utterance.pitch = 1;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
 }
 
-function appendUserMessage(text) {
-  const messages = document.getElementById("messages");
-  const div = document.createElement("div");
-  div.className = "flex justify-end px-2";
-  div.innerHTML = `<div class="max-w-xl px-4 py-3 msg-user"><div class="msg-content text-sm">${escapeHtml(text)}</div></div>`;
-  messages.appendChild(div);
-  scrollBottom();
+function drawSketch(text, finalPass = false) {
+  const canvas = document.getElementById("sketch-canvas");
+  const ctx = canvas.getContext("2d");
+  resizeCanvas(canvas);
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "#fbfcf7";
+  ctx.fillRect(0, 0, w, h);
+  drawGrid(ctx, w, h);
+
+  const title = "{{ display_title|escapejs }}";
+  const clean = text.replace(/[#*_`]/g, "").split(/\n+/).filter(Boolean).slice(0, 5);
+  const words = text.toLowerCase();
+
+  ctx.fillStyle = "#17201b";
+  ctx.font = "700 22px Inter, sans-serif";
+  ctx.fillText(title.slice(0, 34), 28, 44);
+
+  if (words.includes("step") || words.includes("process") || clean.length >= 3) {
+    drawFlow(ctx, w, clean);
+  } else if (words.includes("compare") || words.includes("versus") || words.includes("difference")) {
+    drawCompare(ctx, w, h, clean);
+  } else {
+    drawConceptMap(ctx, w, h, clean);
+  }
+
+  document.getElementById("sketch-caption").textContent = finalPass ? "Sketch updated from the latest tutor response." : "Sketching while the tutor responds.";
+}
+
+function drawGrid(ctx, w, h) {
+  ctx.strokeStyle = "#e9eee5";
+  ctx.lineWidth = 1;
+  for (let x = 20; x < w; x += 28) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  for (let y = 20; y < h; y += 28) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+}
+
+function drawFlow(ctx, w, lines) {
+  const items = (lines.length ? lines : ["Idea", "Example", "Practice"]).slice(0, 4);
+  const startX = 40, y = 120, boxW = Math.min(150, (w - 100) / items.length), gap = 22;
+  items.forEach((item, i) => {
+    const x = startX + i * (boxW + gap);
+    roundRect(ctx, x, y, boxW, 78, 8, "#ffffff", "#226f54");
+    ctx.fillStyle = "#17201b";
+    ctx.font = "600 13px Inter, sans-serif";
+    wrapText(ctx, item.replace(/^\d+[\).\s-]*/, "").slice(0, 42), x + 12, y + 30, boxW - 24, 17);
+    if (i < items.length - 1) {
+      ctx.strokeStyle = "#c65d2e";
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(x + boxW + 4, y + 39); ctx.lineTo(x + boxW + gap - 6, y + 39); ctx.stroke();
+    }
+  });
+}
+
+function drawCompare(ctx, w, h, lines) {
+  const left = lines[0] || "First idea";
+  const right = lines[1] || "Second idea";
+  roundRect(ctx, 36, 96, w / 2 - 54, h - 140, 8, "#ffffff", "#226f54");
+  roundRect(ctx, w / 2 + 18, 96, w / 2 - 54, h - 140, 8, "#ffffff", "#c65d2e");
+  ctx.fillStyle = "#226f54"; ctx.font = "700 16px Inter, sans-serif"; ctx.fillText("A", 58, 128);
+  ctx.fillStyle = "#c65d2e"; ctx.fillText("B", w / 2 + 40, 128);
+  ctx.fillStyle = "#17201b"; ctx.font = "500 14px Inter, sans-serif";
+  wrapText(ctx, left.slice(0, 120), 58, 164, w / 2 - 100, 20);
+  wrapText(ctx, right.slice(0, 120), w / 2 + 40, 164, w / 2 - 100, 20);
+}
+
+function drawConceptMap(ctx, w, h, lines) {
+  const cx = w / 2, cy = h / 2;
+  roundRect(ctx, cx - 90, cy - 36, 180, 72, 8, "#ffffff", "#226f54");
+  ctx.fillStyle = "#17201b";
+  ctx.font = "700 15px Inter, sans-serif";
+  wrapText(ctx, (lines[0] || "Core idea").slice(0, 58), cx - 72, cy - 10, 144, 18);
+  const nodes = (lines.length > 1 ? lines.slice(1, 5) : ["Example", "Why it matters", "Practice"]).slice(0, 4);
+  const spots = [[48, 100], [w - 188, 112], [58, h - 122], [w - 198, h - 120]];
+  nodes.forEach((node, i) => {
+    const [x, y] = spots[i];
+    ctx.strokeStyle = "#c65d2e";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x + 70, y + 30); ctx.stroke();
+    roundRect(ctx, x, y, 140, 62, 8, "#ffffff", "#d9dfd6");
+    ctx.fillStyle = "#17201b";
+    ctx.font = "600 12px Inter, sans-serif";
+    wrapText(ctx, node.slice(0, 44), x + 12, y + 25, 116, 16);
+  });
+}
+
+function clearSketch() {
+  const canvas = document.getElementById("sketch-canvas");
+  const ctx = canvas.getContext("2d");
+  resizeCanvas(canvas);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#fbfcf7";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  drawGrid(ctx, canvas.width, canvas.height);
+  document.getElementById("sketch-caption").textContent = "Board cleared.";
+}
+
+function resizeCanvas(canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const scale = window.devicePixelRatio || 1;
+  const width = Math.max(320, Math.floor(rect.width * scale));
+  const height = Math.max(280, Math.floor(rect.height * scale));
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width; canvas.height = height;
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  ctx.fillStyle = fill; ctx.fill();
+  ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke();
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(" ");
+  let line = "";
+  for (const word of words) {
+    const testLine = line ? line + " " + word : word;
+    if (ctx.measureText(testLine).width > maxWidth && line) {
+      ctx.fillText(line, x, y);
+      line = word;
+      y += lineHeight;
+    } else {
+      line = testLine;
+    }
+  }
+  if (line) ctx.fillText(line, x, y);
 }
 
 function escapeHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
 function scrollBottom() {
@@ -221,11 +498,15 @@ function scrollBottom() {
 
 function autoResize(el) {
   el.style.height = "48px";
-  el.style.height = Math.min(el.scrollHeight, 160) + "px";
+  el.style.height = Math.min(el.scrollHeight, 150) + "px";
 }
 
 function handleKey(e) {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function setStatus(text) {
+  document.getElementById("mode-status").textContent = text;
 }
 
 function endSession() {
@@ -233,7 +514,10 @@ function endSession() {
   window.location.href = "/dashboard/";
 }
 
+window.addEventListener("resize", () => drawSketch(streamBuffer || "Core idea\nExample\nPractice", false));
 connect();
+setupSpeech();
+clearSketch();
 scrollBottom();
 </script>
 </body>

@@ -3,179 +3,183 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard — Tutor</title>
+<title>Learning Workspace - Tutor</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root { --ink:#1a1814; --paper:#f7f4ee; --muted:#9b9690; --accent:#c85a1e; --surface:#edeae3; --border:#d4cfc8; }
-  body { font-family:'Fraunces',serif; background:var(--paper); color:var(--ink); }
-  .card { background:white; border:1px solid var(--border); border-radius:16px; }
-  .badge { display:inline-flex; align-items:center; padding:2px 10px; border-radius:999px; font-size:0.75rem; }
+  :root {
+    --ink: #17201b;
+    --muted: #66736b;
+    --paper: #f6f7f2;
+    --surface: #ffffff;
+    --line: #d9dfd6;
+    --accent: #226f54;
+    --accent-2: #c65d2e;
+    --focus: #f0c95a;
+  }
+  body { font-family: Inter, system-ui, sans-serif; background: var(--paper); color: var(--ink); }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+  .soft { background: #edf3ea; border: 1px solid var(--line); }
+  .mono { font-family: "IBM Plex Mono", monospace; }
 </style>
 </head>
 <body class="min-h-screen">
-
-<nav class="border-b px-6 py-4 flex items-center justify-between" style="border-color:var(--border);background:var(--paper);">
-  <span class="text-xl font-semibold">Your Tutor</span>
-  <div class="flex items-center gap-4 text-sm">
-    <span style="color:var(--muted);">{{ profile.user.email }}</span>
-  </div>
-</nav>
-
-<main class="max-w-5xl mx-auto px-4 py-8">
-
-  <!-- Stats row -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-    {% for stat in stats %}
-    <div class="card p-4 text-center">
-      <p class="text-2xl font-semibold">{{ stat.value }}</p>
-      <p class="text-xs mt-1" style="color:var(--muted);">{{ stat.label }}</p>
+<header class="border-b" style="border-color:var(--line); background:var(--surface);">
+  <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <p class="text-xs mono uppercase tracking-wide" style="color:var(--muted);">Personalized tutor</p>
+      <h1 class="text-xl font-semibold">Learning workspace</h1>
     </div>
-    {% endfor %}
-    <div class="card p-4 text-center">
-      <p class="text-2xl font-semibold">{{ profile.total_sessions }}</p>
-      <p class="text-xs mt-1" style="color:var(--muted);">Total sessions</p>
-    </div>
-    <div class="card p-4 text-center">
-      <p class="text-2xl font-semibold">{{ profile.streak_days }}</p>
-      <p class="text-xs mt-1" style="color:var(--muted);">Day streak</p>
-    </div>
-    <div class="card p-4 text-center">
-      <p class="text-2xl font-semibold">{{ due_cards_count }}</p>
-      <p class="text-xs mt-1" style="color:var(--muted);">Cards due</p>
-    </div>
-    <div class="card p-4 text-center">
-      <p class="text-2xl font-semibold">{{ profile.mastery_map|length }}</p>
-      <p class="text-xs mt-1" style="color:var(--muted);">Topics tracked</p>
+    <div class="flex items-center gap-3 text-sm" style="color:var(--muted);">
+      <span>{{ profile.user.email }}</span>
+      <a href="/admin/" class="px-3 py-2 rounded-md soft text-xs font-medium">Admin</a>
     </div>
   </div>
+</header>
 
-  <div class="grid md:grid-cols-3 gap-6 mb-8">
-
-    <!-- Start new session -->
-    <div class="card p-6 flex flex-col justify-between">
-      <div>
-        <h2 class="font-semibold text-lg mb-2">Start learning</h2>
-        <p class="text-sm mb-4" style="color:var(--muted);">Pick a topic and your tutor will adapt to your level in real time.</p>
+<main class="max-w-7xl mx-auto px-4 py-6 grid lg:grid-cols-[minmax(0,1fr)_340px] gap-5">
+  <section class="space-y-5">
+    <div class="panel p-5">
+      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-5">
+        <div>
+          <h2 class="text-2xl font-semibold">Start learning from here</h2>
+          <p class="text-sm mt-1" style="color:var(--muted);">Voice is the default in the tutor room; switch to text whenever reading and typing feels better.</p>
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-center min-w-[260px]">
+          <div class="soft rounded-md px-3 py-2">
+            <p class="font-semibold">{{ profile.streak_days }}</p>
+            <p class="text-[11px]" style="color:var(--muted);">streak</p>
+          </div>
+          <div class="soft rounded-md px-3 py-2">
+            <p class="font-semibold">{{ due_cards_count }}</p>
+            <p class="text-[11px]" style="color:var(--muted);">reviews</p>
+          </div>
+          <div class="soft rounded-md px-3 py-2">
+            <p class="font-semibold">{{ profile.mastery_map|length }}</p>
+            <p class="text-[11px]" style="color:var(--muted);">topics</p>
+          </div>
+        </div>
       </div>
-      <a href="/dashboard/start/" class="block text-center px-4 py-2 rounded-xl text-white text-sm font-medium" style="background:var(--accent);">New session →</a>
-    </div>
 
-    <!-- Review cards -->
-    <div class="card p-6 flex flex-col justify-between">
-      <div>
-        <h2 class="font-semibold text-lg mb-2">Review cards</h2>
-        <p class="text-sm mb-4" style="color:var(--muted);">
-          {% if due_cards_count %}{{ due_cards_count }} card{{ due_cards_count|pluralize }} due for review today.{% else %}No cards due — check back tomorrow!{% endif %}
-        </p>
+      <form method="post" action="/dashboard/" class="grid md:grid-cols-[minmax(0,1fr)_auto] gap-3">
+        {% csrf_token %}
+        <input
+          type="text"
+          name="custom_topic"
+          placeholder="What do you want to learn today?"
+          class="w-full px-4 py-3 rounded-md border text-base outline-none focus:ring-2"
+          style="border-color:var(--line); --tw-ring-color:var(--focus);"
+          required>
+        <button type="submit" class="px-5 py-3 rounded-md text-white font-semibold" style="background:var(--accent);">Start tutor</button>
+      </form>
+
+      {% if topics %}
+      <div class="mt-5">
+        <p class="text-xs mono uppercase mb-2" style="color:var(--muted);">Quick topics</p>
+        <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-2">
+          {% for topic in topics %}
+          <form method="post" action="/dashboard/">
+            {% csrf_token %}
+            <input type="hidden" name="topic_slug" value="{{ topic.slug }}">
+            <button class="w-full h-full text-left p-3 rounded-md soft hover:bg-white transition">
+              <span class="block text-sm font-semibold">{{ topic.name }}</span>
+              <span class="block text-xs mt-1" style="color:var(--muted);">{{ topic.subject }} · {{ topic.estimated_minutes }} min</span>
+            </button>
+          </form>
+          {% endfor %}
+        </div>
       </div>
-      <a href="/dashboard/review/" class="block text-center px-4 py-2 rounded-xl text-sm font-medium" style="background:var(--surface); border:1px solid var(--border);">Go to review →</a>
-    </div>
-
-    <!-- Active goals -->
-    <div class="card p-6">
-      <h2 class="font-semibold text-lg mb-3">Active goals</h2>
-      {% if active_goals %}
-        <ul class="space-y-2">
-        {% for goal in active_goals %}
-          <li class="text-sm flex items-center justify-between">
-            <span>{{ goal.title }}</span>
-            <span class="badge" style="background:var(--surface); color:var(--muted);">{{ goal.progress_percent|floatformat:0 }}%</span>
-          </li>
-        {% endfor %}
-        </ul>
-      {% else %}
-        <p class="text-sm" style="color:var(--muted);">No goals set yet. Set one in your profile.</p>
       {% endif %}
     </div>
 
-  </div>
+    <div class="grid md:grid-cols-2 gap-5">
+      <section class="panel p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-semibold">Continue</h2>
+          <span class="text-xs mono" style="color:var(--muted);">{{ profile.total_sessions }} sessions</span>
+        </div>
+        {% if recent_sessions %}
+        <div class="space-y-2">
+          {% for s in recent_sessions %}
+          <a href="/chat/{{ s.id }}/" class="block p-3 rounded-md soft hover:bg-white transition">
+            <div class="flex items-center justify-between gap-3">
+              <span class="font-medium text-sm">{{ s.topic.name|default:s.title|default:"Open session" }}</span>
+              <span class="text-xs" style="color:var(--muted);">{{ s.started_at|date:"M d" }}</span>
+            </div>
+            <p class="text-xs mt-1" style="color:var(--muted);">
+              {% if s.session_score is not None %}Score {{ s.session_score|floatformat:0 }}%{% else %}Resume conversation{% endif %}
+            </p>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm" style="color:var(--muted);">Your sessions will appear here once you begin.</p>
+        {% endif %}
+      </section>
 
-  <!-- Mastery progress chart -->
-  <div class="card p-6 mb-6">
-    <h2 class="font-semibold text-lg mb-4">Mastery over time</h2>
-    <canvas id="progress-chart" height="100"></canvas>
-  </div>
-
-  <!-- Weak areas -->
-  {% if profile.struggle_areas %}
-  <div class="card p-6 mb-6">
-    <h2 class="font-semibold text-lg mb-3">Areas to work on</h2>
-    <div class="flex flex-wrap gap-2">
-      {% for area in profile.struggle_areas %}
-      <span class="badge text-xs" style="background:#fef2ec; color:var(--accent);">{{ area }}</span>
-      {% endfor %}
+      <section class="panel p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-semibold">Review without leaving</h2>
+          <span class="text-xs mono" style="color:var(--muted);">{{ due_cards_count }} due</span>
+        </div>
+        {% if due_cards %}
+        <div class="space-y-3">
+          {% for card in due_cards %}
+          <div class="rounded-md soft p-3">
+            <p class="text-sm font-medium">{{ card.question|truncatechars:110 }}</p>
+            <p class="text-xs mt-1" style="color:var(--muted);">{{ card.topic.name }}</p>
+            <form method="post" action="/api/sessions/review/{{ card.id }}/" class="mt-3 flex items-center gap-2">
+              {% csrf_token %}
+              <label class="text-xs" style="color:var(--muted);">Quality</label>
+              <input type="number" name="quality" min="0" max="5" value="3" class="w-14 px-2 py-1 rounded border text-sm" style="border-color:var(--line);">
+              <button class="px-3 py-1 rounded-md text-xs text-white" style="background:var(--accent-2);">Submit</button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm" style="color:var(--muted);">No review cards due right now.</p>
+        {% endif %}
+      </section>
     </div>
-  </div>
-  {% endif %}
+  </section>
 
-  <!-- Recent sessions -->
-  <div class="card p-6">
-    <h2 class="font-semibold text-lg mb-4">Recent sessions</h2>
-    {% if recent_sessions %}
-    <table class="w-full text-sm">
-      <thead><tr style="color:var(--muted);" class="text-left">
-        <th class="pb-2 font-normal">Date</th>
-        <th class="pb-2 font-normal">Topic</th>
-        <th class="pb-2 font-normal">Score</th>
-        <th class="pb-2 font-normal"></th>
-      </tr></thead>
-      <tbody class="divide-y" style="border-color:var(--border);">
-      {% for s in recent_sessions %}
-      <tr class="py-2">
-        <td class="py-2" style="color:var(--muted);">{{ s.started_at|date:"M d" }}</td>
-        <td class="py-2">{{ s.topic.name|default:"—" }}</td>
-        <td class="py-2">
-          {% if s.session_score is not None %}
-            <span class="badge" style="background:var(--surface);">{{ s.session_score|floatformat:0 }}%</span>
-          {% else %}—{% endif %}
-        </td>
-        <td class="py-2 text-right"><a href="/chat/{{ s.id }}/" style="color:var(--accent);">Continue →</a></td>
-      </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p class="text-sm" style="color:var(--muted);">No sessions yet. Start your first one above!</p>
-    {% endif %}
-  </div>
+  <aside class="space-y-5">
+    <section class="panel p-5">
+      <h2 class="font-semibold mb-3">Learning pulse</h2>
+      <div class="space-y-3">
+        {% if active_goals %}
+          {% for goal in active_goals %}
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span>{{ goal.title }}</span>
+              <span style="color:var(--muted);">{{ goal.progress_percent|floatformat:0 }}%</span>
+            </div>
+            <div class="h-2 rounded-full overflow-hidden soft">
+              <div class="h-full" style="width:{{ goal.progress_percent|floatformat:0 }}%; background:var(--accent);"></div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-sm" style="color:var(--muted);">No active goals yet. The tutor will still adapt as you learn.</p>
+        {% endif %}
+      </div>
+    </section>
 
+    <section class="panel p-5">
+      <h2 class="font-semibold mb-3">Focus areas</h2>
+      {% if profile.struggle_areas %}
+      <div class="flex flex-wrap gap-2">
+        {% for area in profile.struggle_areas %}
+        <span class="px-2 py-1 rounded-md text-xs soft">{{ area }}</span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm" style="color:var(--muted);">Weak spots will appear here after a few tutor turns.</p>
+      {% endif %}
+    </section>
+  </aside>
 </main>
-
-<script>
-const snapshots = {{ snapshots|safe }};
-
-// Group by subject
-const subjects = [...new Set(snapshots.map(s => s.subject))];
-const labels = [...new Set(snapshots.map(s => s.date))].sort();
-const colors = ['#c85a1e','#4e7c59','#2c6b9c','#7b5ea7','#9b9690'];
-
-const datasets = subjects.map((subj, i) => ({
-  label: subj,
-  data: labels.map(d => {
-    const pt = snapshots.find(s => s.date === d && s.subject === subj);
-    return pt ? Math.round(pt.mastery_score * 100) : null;
-  }),
-  borderColor: colors[i % colors.length],
-  backgroundColor: 'transparent',
-  tension: 0.35,
-  spanGaps: true,
-  pointRadius: 3,
-}));
-
-new Chart(document.getElementById('progress-chart'), {
-  type: 'line',
-  data: { labels, datasets },
-  options: {
-    responsive: true,
-    plugins: { legend: { position: 'bottom' } },
-    scales: {
-      y: { min: 0, max: 100, ticks: { callback: v => v+'%' } },
-      x: { ticks: { maxTicksLimit: 10 } }
-    }
-  }
-});
-</script>
 </body>
 </html>

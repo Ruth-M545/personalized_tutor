@@ -58,6 +58,28 @@ def _get_alternative_provider(primary: str) -> str | None:
     return None
 
 
+def _provider_has_key(provider: str) -> bool:
+    provider = provider.lower()
+    if provider == "anthropic":
+        return bool(settings.ANTHROPIC_API_KEY)
+    if provider == "openai":
+        return bool(settings.OPENAI_API_KEY)
+    if provider == "xai":
+        return bool(settings.XAI_API_KEY)
+    return False
+
+
+def _local_tutor_response(user_message: str, topic: str) -> str:
+    focus = topic if topic and topic != "General" else user_message[:80] or "this topic"
+    return (
+        f"Let's work on **{focus}** together. I will keep it simple and interactive.\n\n"
+        "First, tell me what you already know or where you feel stuck. Then I will "
+        "teach one idea, sketch the structure on the board, and check your understanding "
+        "before moving on.\n\n"
+        f"To begin: when you think about **{focus}**, what is the first part that feels unclear? [EXPLAIN]"
+    )
+
+
 class TutorOrchestrator:
 
     def __init__(self, user, session):
@@ -84,6 +106,11 @@ class TutorOrchestrator:
     async def _call_llm_stream(self, messages: list[dict]) -> AsyncGenerator[str, None]:
         """Stream tokens from the configured provider, with fallback support."""
         provider = settings.LLM_PROVIDER.lower()
+        if not _provider_has_key(provider):
+            topic = self.session.topic.name if self.session.topic else self.session.title or "General"
+            for word in _local_tutor_response(messages[-1]["content"], topic).split(" "):
+                yield word + " "
+            return
         try:
             async for token in self._call_llm_stream_for_provider(provider, messages):
                 yield token
@@ -164,6 +191,17 @@ class TutorOrchestrator:
     async def _call_llm(self, messages: list[dict]) -> str:
         """Non-streaming LLM call for structured JSON responses."""
         provider = settings.LLM_PROVIDER.lower()
+        if not _provider_has_key(provider):
+            return json.dumps({
+                "session_score": 0.0,
+                "concepts_covered": [],
+                "gaps_detected": [],
+                "mastery_updates": {},
+                "struggle_areas_new": [],
+                "struggle_areas_resolved": [],
+                "agent_notes": "Local fallback summary; configure an LLM API key for full analytics.",
+                "recommended_review_cards": [],
+            })
         try:
             return await self._call_llm_for_provider(provider, messages)
         except Exception as exc:
